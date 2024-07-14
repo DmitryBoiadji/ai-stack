@@ -1,0 +1,64 @@
+---
+- name: Setup Docker and NVIDIA Container Toolkit on a Ubuntu machine
+  hosts: ubuntu_hosts
+  become: yes
+  tasks:
+    - name: Update apt package list
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Install prerequisite packages for NVIDIA drivers
+      ansible.builtin.package:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - ubuntu-drivers-common
+        - curl
+        - gpg
+
+    - name: Install Docker
+      ansible.builtin.package:
+        name: docker.io
+        state: present
+
+    - name: Install NVIDIA driver recommended version
+      command: sudo ubuntu-drivers install
+      args:
+        creates: /usr/bin/nvidia-smi
+
+    - name: Install specific NVIDIA utilities (replace 535 with the latest if necessary)
+      ansible.builtin.package:
+        name: nvidia-utils-{{ ansible_facts['distribution_version'] }}
+        state: present
+
+    - name: Reboot the machine to apply the driver changes
+      command: sudo reboot
+      args:
+        async: 0
+        poll: 0
+
+    - name: Wait for the machine to come back up (this is a simple sleep, might need improvement)
+      pause: seconds=60
+
+    - name: Check if NVIDIA drivers are functioning properly
+      command: nvidia-smi
+      changed_when: false
+      failed_when: "ansible_facts['nvidia_smi'].rc != 0"
+
+    - name: Configure the production repository for NVIDIA Container Toolkit
+      command: >
+        curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+      args:
+        creates: /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+
+    - name: Add NVIDIA Container Toolkit repository
+      command: >
+        curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+      args:
+        creates: /etc/apt/sources.list.d/nvidia-container-toolkit.list
+
+    - name: Update apt package list from the repository
+      command: sudo apt-get update
+
+    - name: Install NVIDIA Container Toolkit packages
+      command: sudo apt-get install -y nvidia-container-toolkit
