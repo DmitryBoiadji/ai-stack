@@ -26,9 +26,9 @@
       args:
         creates: /usr/bin/nvidia-smi
 
-    - name: Install specific NVIDIA utilities (replace 535 with the latest if necessary)
+    - name: Install specific NVIDIA utilities
       ansible.builtin.package:
-        name: nvidia-utils-{{ ansible_facts['distribution_version'] }}
+        name: nvidia-utils-{{ansible_facts['distribution_version']}}
         state: present
 
     - name: Reboot the machine to apply the driver changes
