@@ -2,6 +2,8 @@
 - name: Setup Docker and NVIDIA Container Toolkit on a Ubuntu machine
   hosts: ubuntu_hosts
   become: yes
+  vars_files:
+    - group_vars/all.yml
   tasks:
     - name: Update apt package list
       ansible.builtin.apt:
@@ -28,37 +30,66 @@
 
     - name: Install specific NVIDIA utilities
       ansible.builtin.package:
-        name: nvidia-utils-{{ansible_facts['distribution_version']}}
+        name: nvidia-utils-{{ ansible_facts['nvidia-utils-version'] }}
         state: present
 
-    - name: Reboot the machine to apply the driver changes
-      command: sudo reboot
+    - name: Add Docker GPG key
+      shell: curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
       args:
-        async: 0
-        poll: 0
+        creates: /usr/share/keyrings/docker-archive-keyring.gpg
 
-    - name: Wait for the machine to come back up (this is a simple sleep, might need improvement)
-      pause: seconds=60
+    - name: Add Docker APT repository
+      copy:
+        content: |
+          deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu {{ ansible_facts['lsb-release'] }} stable
+        dest: /etc/apt/sources.list.d/docker.list
+        force: yes
 
-    - name: Check if NVIDIA drivers are functioning properly
-      command: nvidia-smi
-      changed_when: false
-      failed_when: "ansible_facts['nvidia_smi'].rc != 0"
-
-    - name: Configure the production repository for NVIDIA Container Toolkit
-      command: >
-        curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+    - name: Add NVIDIA GPG key
+      shell: curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
       args:
         creates: /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
 
     - name: Add NVIDIA Container Toolkit repository
-      command: >
-        curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+      shell: curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
       args:
         creates: /etc/apt/sources.list.d/nvidia-container-toolkit.list
 
-    - name: Update apt package list from the repository
-      command: sudo apt-get update
+    - name: Update APT package index
+      ansible.builtin.apt:
+        update_cache: yes
 
-    - name: Install NVIDIA Container Toolkit packages
-      command: sudo apt-get install -y nvidia-container-toolkit
+    - name: Install Docker
+      ansible.builtin.apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+        state: present
+
+    - name: Install NVIDIA Container Toolkit
+      ansible.builtin.apt:
+        name: nvidia-container-toolkit
+        state: present
+
+    - name: Debug ansible_facts
+      ansible.builtin.debug:
+        var: ansible_facts
+
+    - name: Configure NVIDIA runtime
+      command: sudo nvidia-ctk runtime configure --runtime=docker
+      when: "'nvidia-container-toolkit' in ansible_facts.packages"
+
+    - name: Restart Docker service
+      ansible.builtin.service:
+        name: docker
+        state: restarted
+
+    - name: Test NVIDIA container toolkit
+      shell: sudo docker run --rm --runtime=nvidia --gpus all ubuntu nvidia-smi
+      register: result
+      failed_when: "'NVIDIA-SMI' not in result.stdout"
+
+    - name: Print test result
+      ansible.builtin.debug:
+        msg: "{{ result.stdout }}"
