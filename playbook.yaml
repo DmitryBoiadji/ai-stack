@@ -27,12 +27,7 @@
       wait_for_connection:
         timeout: 60
 
-    - name: Install Docker
-      ansible.builtin.package:
-        name:
-          - docker-ce
-          - docker-ce-cli
-        state: present
+
 
 
     - name: Install NVIDIA driver recommended version
@@ -57,6 +52,7 @@
         dest: /etc/apt/sources.list.d/docker.list
         force: yes
 
+
     - name: Add NVIDIA GPG key
       shell: curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
       args:
@@ -70,6 +66,13 @@
     - name: Update APT package index
       ansible.builtin.apt:
         update_cache: yes
+
+    - name: Install Docker
+      ansible.builtin.package:
+        name:
+          - docker-ce
+          - docker-ce-cli
+        state: present
 
     - name: Install NVIDIA Container Toolkit
       ansible.builtin.apt:
