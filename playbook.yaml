@@ -18,10 +18,22 @@
         - curl
         - gpg
 
+    - name: Reboot the machine
+      reboot:
+        msg: "Reboot initiated by Ansible for NVIDIA runtime configuration"
+        reboot_timeout: 600
+
+    - name: Wait for the machine to come back online
+      wait_for_connection:
+        timeout: 60
+
     - name: Install Docker
       ansible.builtin.package:
-        name: docker.io
+        name:
+          - docker-ce
+          - docker-ce-cli
         state: present
+
 
     - name: Install NVIDIA driver recommended version
       command: sudo ubuntu-drivers install
@@ -59,14 +71,6 @@
       ansible.builtin.apt:
         update_cache: yes
 
-    - name: Install Docker
-      ansible.builtin.apt:
-        name:
-          - docker-ce
-          - docker-ce-cli
-          - containerd.io
-        state: present
-
     - name: Install NVIDIA Container Toolkit
       ansible.builtin.apt:
         name: nvidia-container-toolkit
@@ -78,7 +82,9 @@
 
     - name: Configure NVIDIA runtime
       command: sudo nvidia-ctk runtime configure --runtime=docker
-      when: "'nvidia-container-toolkit' in ansible_facts.packages"
+      register: configure_nvidia_runtime
+      failed_when: configure_nvidia_runtime.rc != 0
+      ignore_errors: no
 
     - name: Restart Docker service
       ansible.builtin.service:
