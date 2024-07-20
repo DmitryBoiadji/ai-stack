@@ -18,18 +18,6 @@
         - curl
         - gpg
 
-    - name: Reboot the machine
-      reboot:
-        msg: "Reboot initiated by Ansible for NVIDIA runtime configuration"
-        reboot_timeout: 600
-
-    - name: Wait for the machine to come back online
-      wait_for_connection:
-        timeout: 60
-
-
-
-
     - name: Install NVIDIA driver recommended version
       command: sudo ubuntu-drivers install
       args:
@@ -39,6 +27,15 @@
       ansible.builtin.package:
         name: nvidia-utils-{{ ansible_facts['nvidia-utils-version'] }}
         state: present
+
+    - name: Reboot the machine
+      reboot:
+        msg: "Reboot initiated by Ansible for NVIDIA runtime configuration"
+        reboot_timeout: 600
+
+    - name: Wait for the machine to come back online
+      wait_for_connection:
+        timeout: 60
 
     - name: Add Docker GPG key
       shell: curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
