@@ -86,6 +86,10 @@ The stack includes the following services:
 - Access **Stable Diffusion** at `https://sd.your_app_domain`
 - Access **Whisper** at `https://whisper.your_app_domain`
 
+## Tools
+
+update_models.sh - Run on ollama docker to recursively update all models.
+
 ## Contributing
 Contributions are welcome! Please fork the repository and create a pull request.
 
