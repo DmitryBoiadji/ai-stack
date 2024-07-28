@@ -1,3 +1,4 @@
 ansible_facts:
-  distribution_version: "535"
+  nvidia-utils-version: "535"
   nvidia_smi: ""
+  lsb-release: "noble"

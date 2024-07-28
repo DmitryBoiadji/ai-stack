@@ -1,37 +1,44 @@
+networks:
+  traefik:
+    external: true
+
 services:
 
+
   ollama:
-    image: ollama/ollama:latest
-    container_name: ollama
-    restart: unless-stopped
-    environment:
-      - PUID=${PUID:-1000}
-      - PGID=${PGID:-1000}
-      - OLLAMA_KEEP_ALIVE=24h
-      - ENABLE_IMAGE_GENERATION=True
-      - COMFYUI_BASE_URL=http://stable-diffusion-webui:7860
-    networks:
-      - ${DOCKER_NETWORK}
-    volumes:
-      - /etc/localtime:/etc/localtime:ro
-      - /etc/timezone:/etc/timezone:ro
-      - ./ollama:/root/.ollama
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.ollama.rule=Host(`ollama.${APP_DOMAIN}`)"
-      - "traefik.http.routers.ollama.entrypoints=https"
-      - "traefik.http.routers.ollama.tls=true"
-      - "traefik.http.routers.ollama.tls.certresolver=cloudflare"
-      - "traefik.http.routers.ollama.middlewares=default-headers@file"
-      - "traefik.http.routers.ollama.middlewares=ollama-auth"
-      - "traefik.http.services.ollama.loadbalancer.server.port=11434"
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
+      image: ollama/ollama:latest
+      container_name: ollama
+      restart: unless-stopped
+      environment:
+        - PUID=${PUID:-1000}
+        - PGID=${PGID:-1000}
+        - OLLAMA_KEEP_ALIVE=3h
+        - ENABLE_IMAGE_GENERATION=True
+        - COMFYUI_BASE_URL=http://stable-diffusion-webui:7860
+      networks:
+        - ${DOCKER_NETWORK}
+      volumes:
+        - /etc/localtime:/etc/localtime:ro
+        - /etc/timezone:/etc/timezone:ro
+        - ./ollama:/root/.ollama
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.ollama.rule=Host(`ollama.${APP_DOMAIN}`)"
+        - "traefik.http.routers.ollama.entrypoints=https"
+        - "traefik.http.routers.ollama.tls=true"
+        - "traefik.http.routers.ollama.tls.certresolver=cloudflare"
+        - "traefik.http.routers.ollama.middlewares=default-headers@file"
+        - "traefik.http.routers.ollama.middlewares=ollama-auth"
+        - "traefik.http.services.ollama.loadbalancer.server.port=11434"
+        - "traefik.http.routers.ollama.middlewares=auth"
+        - "traefik.http.middlewares.auth.basicauth.users=${OLLAMA_API_CREDENTIALS}"
+      deploy:
+        resources:
+          reservations:
+            devices:
+              - driver: nvidia
+                count: 1
+                capabilities: [gpu]
 
   open-webui:
     image: ghcr.io/open-webui/open-webui:latest
@@ -58,7 +65,6 @@ services:
       - "traefik.http.routers.open-webui.entrypoints=https"
       - "traefik.http.routers.open-webui.tls=true"
       - "traefik.http.routers.open-webui.tls.certresolver=cloudflare"
-      - "traefik.http.routers.open-webui.middlewares=default-headers@file"
       - "traefik.http.services.open-webui.loadbalancer.server.port=8080"
     depends_on:
       - ollama
@@ -120,12 +126,11 @@ services:
       - ${DOCKER_NETWORK}
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.stable-diffusion.rule=Host(`stable-diffusion.${APP_DOMAIN}`)"
+      - "traefik.http.routers.stable-diffusion.rule=Host(`sd.${APP_DOMAIN}`)"
       - "traefik.http.routers.stable-diffusion.entrypoints=https"
       - "traefik.http.routers.stable-diffusion.tls=true"
       - "traefik.http.routers.stable-diffusion.tls.certresolver=cloudflare"
       - "traefik.http.services.stable-diffusion.loadbalancer.server.port=7860"
-      - "traefik.http.routers.stable-diffusion.middlewares=default-headers@file"
 
 # whisper
   mongo:
@@ -198,7 +203,6 @@ services:
       - "traefik.http.routers.whisper.tls=true"
       - "traefik.http.routers.whisper.tls.certresolver=cloudflare"
       - "traefik.http.services.whisper.loadbalancer.server.port=80"
-      - "traefik.http.routers.whisper.middlewares=default-headers@file"
     depends_on:
       - mongo
       - translate
@@ -218,6 +222,3 @@ services:
           - driver: nvidia
             count: all
             capabilities: [gpu]
-networks:
-  ${DOCKER_NETWORK}:
-    external: true
