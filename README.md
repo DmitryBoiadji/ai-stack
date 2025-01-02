@@ -15,6 +15,8 @@
 
 This repository contains a complete local AI stack setup using Docker Compose and Ansible. The stack includes several AI-related services, such as Ollama, Open-WebUI, SearxNG, Stable Diffusion, Whisper, and more. The configuration ensures the integration of [Traefik](https://traefik.io/traefik/) for reverse proxy and Let's Encrypt for SSL/TLS certificates.
 
+For limited experience on macOS use compose-mac.yaml (Ollama should run separately, no stable diffusion support at the moment)
+
 ### Thanks
 Huge thanks go to [Techno Tim](https://www.youtube.com/@TechnoTim) and his video [Self-Hosted AI That's Actually Useful](https://www.youtube.com/watch?v=GrLpdfhTwLg&t=616s), and [tutorial](https://technotim.live/posts/ai-stack-tutoria) which inspired me to finally gather all these services into one Docker Compose stack.
 

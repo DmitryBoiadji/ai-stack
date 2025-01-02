@@ -1,2 +1,6 @@
 .idea
 .env
+# exclude MacOS temp files
+*.DS_Store
+open-webui
+searxng
